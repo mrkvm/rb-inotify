@@ -27,6 +27,9 @@ module INotify
     # * Files in `/dev/fd` sometimes register as directories, but are not enumerable.
     RECURSIVE_BLACKLIST = %w[/dev/fd]
 
+    # Allow user to update recursive blacklist at runtime
+    attr_accessor :recursive_blacklist
+
     # A hash from {Watcher} ids to the instances themselves.
     #
     # @private
@@ -53,6 +56,7 @@ module INotify
     def initialize
       @fd = Native.inotify_init
       @watchers = {}
+      @recursive_blacklist = RECURSIVE_BLACKLIST
       return unless @fd < 0
 
       raise SystemCallError.new(
@@ -193,7 +197,7 @@ module INotify
         d = File.join(path, base)
         binary_d = d.respond_to?(:force_encoding) ? d.dup.force_encoding('BINARY') : d
         next if binary_d =~ /\/\.\.?$/ # Current or parent directory
-        watch(d, *flags, &callback) if !RECURSIVE_BLACKLIST.include?(d) && File.directory?(d)
+        watch(d, *flags, &callback) if !@recursive_blacklist.include?(d) && File.directory?(d)
       end
 
       rec_flags = [:create, :moved_to]
